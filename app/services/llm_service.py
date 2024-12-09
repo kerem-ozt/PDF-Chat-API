@@ -1,8 +1,8 @@
 import google.generativeai as genai
-import os
 from app.core.config import GEMINI_API_KEY
 from app.core.logger import logger
 import asyncio
+from functools import lru_cache
 
 genai.configure(api_key=GEMINI_API_KEY)
 
@@ -35,11 +35,20 @@ def generate_chat_response(pdf_text: str, user_message: str) -> str:
         logger.error(f"Gemini API error: {e}")
         return "An error occurred while communicating with the LLM."
 
+@lru_cache(maxsize=100)
+def cached_generate_chat_response(pdf_text: str, user_message: str) -> str:
+    """
+    A cached wrapper around generate_chat_response.
+    If the same (pdf_text, user_message) pair is requested multiple times,
+    this function will return the cached result without calling the LLM API again.
+    """
+    logger.info("Cached LLM API call")
+    return generate_chat_response(pdf_text, user_message)
 
 async def ask_llm(pdf_text: str, user_message: str) -> str:
     try:
         return await asyncio.wait_for(
-            asyncio.to_thread(generate_chat_response, pdf_text, user_message),
+            asyncio.to_thread(cached_generate_chat_response, pdf_text, user_message),
             timeout=20 
         )
     except asyncio.TimeoutError:
