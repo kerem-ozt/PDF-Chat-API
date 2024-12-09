@@ -31,10 +31,17 @@ def generate_chat_response(pdf_text: str, user_message: str) -> str:
         else:
             logger.warning("No candidates returned from Gemini API")
             return "Sorry, I couldn't generate a response."
-
     except Exception as e:
-        logger.error(f"Error in generate_chat_response: {str(e)}")
-        return "An error occurred while generating a response."
+        logger.error(f"Gemini API error: {e}")
+        return "An error occurred while communicating with the LLM."
+
 
 async def ask_llm(pdf_text: str, user_message: str) -> str:
-    return await asyncio.to_thread(generate_chat_response, pdf_text, user_message)
+    try:
+        return await asyncio.wait_for(
+            asyncio.to_thread(generate_chat_response, pdf_text, user_message),
+            timeout=20 
+        )
+    except asyncio.TimeoutError:
+        logger.error("LLM API call timed out.")
+        return "The LLM took too long to respond, please try again later."
