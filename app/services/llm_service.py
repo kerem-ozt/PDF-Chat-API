@@ -13,7 +13,12 @@ def generate_chat_response(pdf_text: str, user_message: str) -> str:
             {"role": "user", "content": f"The user has a PDF with the following content:\n{pdf_text}"},
             {"role": "user", "content": user_message}
         ]
-
+        # response = genai.chat(
+        #     model="models/chat-bison-001",
+        #     messages=messages,
+        #     temperature=0.7,
+        #     candidate_count=1
+        # )
         model = genai.GenerativeModel("gemini-1.5-flash")
         response = model.generate_content("Explain how AI works")
         print(response.candidates[0].content.parts[0].text)
