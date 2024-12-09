@@ -1,6 +1,7 @@
 from pypdf import PdfReader
 from io import BytesIO
 from app.core.logger import logger
+from app.utils.pdf_utils import preprocess_text
 
 def process_pdf(pdf_content: bytes):
     try:
@@ -11,6 +12,7 @@ def process_pdf(pdf_content: bytes):
             if page_text:
                 text.append(page_text)
         full_text = "\n".join(text)
+        full_text = preprocess_text(full_text)
         metadata = {
             "num_pages": len(reader.pages),
             "title": reader.metadata.title if reader.metadata.title else "Untitled",
