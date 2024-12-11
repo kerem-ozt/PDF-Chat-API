@@ -25,5 +25,5 @@ app.include_router(chat.router)
 
 @app.get("/health")
 @limiter.limit("1/minute")
-def health_check(request: Request):  # Include request as a parameter
+def health_check(request: Request): 
     return {"status": "ok"}
