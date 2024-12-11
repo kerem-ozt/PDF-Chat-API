@@ -1,8 +1,11 @@
 fastapi
-uvicorn
+uvicorn[standard]
+gunicorn
 python-dotenv
 pypdf
 google-generativeai
-httpx
-pytest
+slowapi
+python-json-logger
+python-multipart
 fpdf
+pytest
