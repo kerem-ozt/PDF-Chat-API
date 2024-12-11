@@ -1,5 +1,3 @@
----
-
 # PDF Chat API
 
 ## Overview
@@ -210,5 +208,3 @@ To run tests:
 ```bash
 python -m pytest
 ```
-
----
