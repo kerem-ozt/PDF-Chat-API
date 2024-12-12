@@ -1,20 +1,27 @@
-import google.generativeai as genai
-from app.core.config import GEMINI_API_KEY
-from app.core.logger import logger
 import asyncio
 from functools import lru_cache
+from app.core.config import GEMINI_API_KEY
+from app.core.logger import logger
+import google.generativeai as genai
+from app.services.rag_service import retrieve_relevant_chunks
 
 genai.configure(api_key=GEMINI_API_KEY)
 
-def generate_chat_response(pdf_text: str, user_message: str) -> str:
+def generate_chat_response(pdf_id: str, user_message: str) -> str:
     try:
+        # İlgili chunk'ları getir
+        relevant_chunks = retrieve_relevant_chunks(pdf_id, user_message, k=3)
+        if not relevant_chunks:
+            logger.warning("No relevant chunks found. Returning a fallback answer.")
+            return "I couldn't find relevant information in the PDF."
+
         prompt = f"""
-        The user has a PDF with the following content:
-        {pdf_text}
+        The user has a PDF with the following relevant chunks:
+        {''.join(relevant_chunks)}
 
         The user's question is: {user_message}
 
-        Please answer concisely and accurately using only the information from the PDF.
+        Please answer concisely and accurately using only the information from these chunks.
         """
 
         model = genai.GenerativeModel("gemini-1.5-flash")
@@ -36,20 +43,16 @@ def generate_chat_response(pdf_text: str, user_message: str) -> str:
         return "An error occurred while communicating with the LLM."
 
 @lru_cache(maxsize=100)
-def cached_generate_chat_response(pdf_text: str, user_message: str) -> str:
-    """
-    A cached wrapper around generate_chat_response.
-    If the same (pdf_text, user_message) pair is requested multiple times,
-    this function will return the cached result without calling the LLM API again.
-    """
-    logger.info("Cached LLM API call")
-    return generate_chat_response(pdf_text, user_message)
+def cached_generate_chat_response(pdf_id: str, user_message: str) -> str:
+    logger.info("Cached LLM API call with RAG")
+    return generate_chat_response(pdf_id, user_message)
 
-async def ask_llm(pdf_text: str, user_message: str) -> str:
+async def ask_llm(pdf_text: str, user_message: str, pdf_id: str) -> str:
+    # pdf_text'i artık direkt kullanmıyoruz, rag üzerinden chunk getiriyoruz
     try:
         return await asyncio.wait_for(
-            asyncio.to_thread(cached_generate_chat_response, pdf_text, user_message),
-            timeout=20 
+            asyncio.to_thread(cached_generate_chat_response, pdf_id, user_message),
+            timeout=20
         )
     except asyncio.TimeoutError:
         logger.error("LLM API call timed out.")

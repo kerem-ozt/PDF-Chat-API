@@ -9,3 +9,6 @@ python-json-logger
 python-multipart
 fpdf
 pytest
+chromadb
+faiss-cpu
+sentence-transformers

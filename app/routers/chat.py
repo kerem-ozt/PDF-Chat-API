@@ -20,9 +20,8 @@ async def chat_with_pdf(pdf_id: str, chat_request: ChatRequest, request: Request
         logger.warning(f"PDF ID {pdf_id} not found")
         raise HTTPException(status_code=404, detail="PDF not found")
     
-    pdf_text = pdf_store[pdf_id]["text"]
     try:
-        response = await ask_llm(pdf_text, chat_request.message)
+        response = await ask_llm(None, chat_request.message, pdf_id=pdf_id)
         logger.info(f"Generated response: {response}")
         return {"response": response}
     except Exception as e:
