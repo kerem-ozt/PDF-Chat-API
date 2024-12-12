@@ -16,7 +16,7 @@ async def upload_pdf(file: UploadFile = File(...)):
     try:
         pdf_id = str(uuid.uuid4())
         content = await file.read()
-        text, metadata = process_pdf(content)
+        text, metadata = process_pdf(content, pdf_id)
         pdf_store[pdf_id] = {
             "text": text,
             "metadata": metadata
