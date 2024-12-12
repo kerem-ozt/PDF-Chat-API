@@ -2,29 +2,36 @@
 
 ## Overview
 
-The **PDF Chat API** is a backend service built with **FastAPI** that allows users to:
+The **PDF Chat API** is a backend service built with **FastAPI** that enables you to:
 
 1. Upload PDF documents.
 2. Extract text and metadata from the uploaded PDFs.
-3. Interact with the PDF content using a Large Language Model (LLM) - in this case, Google’s Gemini API.
+3. Interact with the PDF content using a Large Language Model (LLM)—Google’s Gemini API in this example.
 4. Query the PDF content through a chat-like interface and receive context-aware answers.
+5. Utilize Retrieval-Augmented Generation (RAG) for large PDFs to improve query efficiency and accuracy.
 
-This application showcases:
-- Integration with external LLM (Gemini API).
-- File handling and PDF text extraction.
-- Rate limiting to control request frequency.
-- Logging and error handling.
-- Testing with pytest.
+This application demonstrates:
+
+- Integration with an external LLM (Gemini).
+- PDF text extraction and preprocessing.
+- Rate limiting to manage request frequency.
+- Robust logging and error handling.
+- Comprehensive integration testing.
 - Containerization with Docker.
+- **RAG Approach** : Splits large PDFs into chunks, indexes them in a vector store, and retrieves only relevant chunks for each query.
 
 ## Key Features
 
-- **Upload PDF Files**: Upload a PDF and get back a `pdf_id` for future references.
-- **Chat with a PDF**: Query the previously uploaded PDF content and get contextually relevant answers from the LLM.
-- **LLM Integration (Gemini)**: Leverages Google’s Gemini 1.5 model to generate intelligent responses.
-- **Rate Limiting**: Uses `slowapi` to prevent abuse and rate-limit requests per IP.
-- **Robust Logging**: Logs are written to both console and rotating log files. Errors are also logged separately.
-- **Testing**: Includes integration tests for both PDF upload and chat functionalities.
+- **Upload PDF Files**: Upload a PDF and get a unique `pdf_id`.
+- **Chat with a PDF**: Query previously uploaded PDF content, now enhanced with a RAG approach.
+- **LLM Integration (Gemini)**: Uses the Gemini model for generating intelligent responses.
+- **RAG (Retrieval-Augmented Generation)**:  
+  - Splits PDFs into chunks.
+  - Embeds chunks and stores them in a vector database (e.g., Chroma).
+  - Retrieves only the most relevant chunks for each query, making LLM responses more accurate and efficient.
+- **Rate Limiting**: Implements `slowapi` to prevent abuse.
+- **Logging**: Writes logs to console and rotating log files, with separate error logs.
+- **Testing**: Integration tests for PDF upload and chat functionalities.
 - **Docker**: Easily build and run the application in a containerized environment.
 
 ## Project Structure
@@ -41,8 +48,9 @@ PDF-Chat-API/
 │  │  ├─ pdf.py
 │  │  └─ chat.py
 │  ├─ services/
-│  │  ├─ pdf_service.py
-│  │  └─ llm_service.py
+│  │  ├─ pdf_service.py       # Processes PDF and stores chunks in vector DB
+│  │  ├─ llm_service.py       # Uses RAG approach to retrieve chunks & query LLM
+│  │  └─ rag_service.py       # Handles chunking, embedding, and vector storage
 │  ├─ utils/
 │  │  └─ pdf_utils.py
 │  └─ main.py
@@ -59,6 +67,12 @@ PDF-Chat-API/
 └─ README.md
 ```
 
+### Branches and Versions
+
+- **Main Branch**: The `main` branch includes the RAG (Retrieval-Augmented Generation) implementation, providing advanced chunking and vector store retrieval for large PDFs.
+
+- **Dev Branch**: If you prefer a simpler version without the RAG integration, check out the `dev` branch. This branch contains a "softer" version of the application, focusing on direct PDF-to-LLM interactions without the complexity of chunking and vector retrieval.
+
 ## Setup Instructions
 
 ### 1. Prerequisites
@@ -73,7 +87,7 @@ git clone https://github.com/kerem-ozt/PDF-Chat-API.git
 cd PDF-Chat-API
 ```
 
-### 3. Create and Activate a Virtual Environment (if running locally)
+### 3. Create and Activate a Virtual Environment (If Running Locally)
 
 ```bash
 python3 -m venv venv
@@ -88,12 +102,14 @@ pip install -r requirements.txt
 
 **Key Dependencies:**
 - **FastAPI**, **uvicorn**, **gunicorn**: For the API server.
-- **python-dotenv**: For loading environment variables from `.env`.
-- **google-generativeai**: For integrating with the Gemini API.
-- **pypdf**: For reading PDF files.
-- **slowapi**: For rate limiting.
-- **python-json-logger**: For JSON formatted logs.
+- **python-dotenv**: For environment variables.
+- **google-generativeai**: Integrates with the Gemini API.
+- **pypdf**: PDF text extraction.
+- **slowapi**: Rate limiting.
+- **python-json-logger**: JSON formatted logs.
 - **fpdf**, **pytest**: For testing.
+- **sentence-transformers**, **chromadb**: For RAG approach (embeddings, vector store).
+- **faiss-cpu** CPU optimization.
 
 ### 5. Environment Variables
 
@@ -103,7 +119,7 @@ Create a `.env` file in the project root:
 GEMINI_API_KEY=your_gemini_api_key_here
 ```
 
-Ensure your `.env` file is listed in `.gitignore` to avoid committing secrets.
+Ensure `.env` is in `.gitignore` to avoid committing it.
 
 ### 6. Running the Application Locally
 
@@ -115,7 +131,7 @@ The app runs at [http://127.0.0.1:8000](http://127.0.0.1:8000)
 
 ### 7. Docker Usage
 
-A `Dockerfile` is included to build and run the application in a container.
+A `Dockerfile` is included.
 
 **Build the image:**
 ```bash
@@ -123,20 +139,20 @@ docker build -t pdf-chat-api .
 ```
 
 **Run the container:**
-You must supply the `GEMINI_API_KEY` as an environment variable:
+Supply the `GEMINI_API_KEY` at runtime:
 ```bash
 docker run -p 8000:8000 -e GEMINI_API_KEY=your_actual_key pdf-chat-api
 ```
 
-Access the API at [http://127.0.0.1:8000](http://127.0.0.1:8000)
+Access at [http://127.0.0.1:8000](http://127.0.0.1:8000)
 
 ### 8. API Endpoints
 
 #### Health Check
 
 - **GET** `/health`
-- **Description:** Check if the API is up.
-- **Rate Limit:** 1 request per minute.
+- **Checks:** API availability.
+- **Rate Limit:** 1 request/minute.
 
 **Example:**
 ```bash
@@ -146,9 +162,9 @@ curl http://127.0.0.1:8000/health
 #### Upload PDF
 
 - **POST** `/v1/pdf`
-- **Description:** Upload and register a PDF, returns a `pdf_id`.
-- **Input:** `multipart/form-data` with a `file` field containing the PDF.
-- **Rate Limit:** 5 requests per minute (global default, can adjust in code).
+- **Description:** Upload a PDF, store its text as chunks in a vector database, returns `pdf_id`.
+- **Input:** `multipart/form-data` with `file`.
+- **Rate Limit:** 5 requests/minute.
 
 **Example:**
 ```bash
@@ -163,12 +179,12 @@ curl -X POST "http://127.0.0.1:8000/v1/pdf" \
 }
 ```
 
-#### Chat with PDF
+#### Chat with PDF (RAG Enabled)
 
 - **POST** `/v1/chat/{pdf_id}`
-- **Description:** Query the content of an already uploaded PDF.
-- **Input:** JSON body with a `"message"` field.
-- **Rate Limit:** 3 requests per minute for this endpoint.
+- **Description:** Queries the PDF by retrieving relevant chunks via RAG and then sending them to LLM for an answer.
+- **Input:** JSON body with `"message"`.
+- **Rate Limit:** 3 requests/minute.
 
 **Example:**
 ```bash
@@ -186,25 +202,19 @@ curl -X POST "http://127.0.0.1:8000/v1/chat/{pdf_id}" \
 
 ### 9. Logging
 
-Logs are stored in `logs/` directory:
-
-- **app.log**: INFO and above logs. Uses `RotatingFileHandler` with max size of 5MB and keeps 5 backups.
-- **error.log**: ERROR and above logs for critical issues.
-- Logs are also printed to the console in JSON format.
-
-You can tail the logs:
-```bash
-tail -f logs/app.log
-```
+- **app.log**: INFO and above, uses `RotatingFileHandler`.
+- **error.log**: ERROR and above.
+- Console logs in JSON format.
+- Check logs via `tail -f logs/app.log`.
 
 ### 10. Testing
 
-The project includes integration tests under `tests/`:
+Integration tests in `tests/`:
 
-- `test_pdf.py`: Tests the PDF upload endpoint.
-- `test_chat.py`: Tests the chat endpoint (uploads a PDF first, then queries it).
+- `test_pdf.py`: Tests PDF upload.
+- `test_chat.py`: Tests chat endpoint (with PDF upload first).
 
-To run tests:
+Run tests:
 ```bash
 python -m pytest
 ```
